@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Chatbot</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome for Microphone Icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f1f1f1;
+        }
+        .chat {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 600px;
+            margin: auto;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background-color: #ffffff;
+        }
+        .chat-header {
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            text-align: center;
+        }
+        .chat-body {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        .chat-message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            width: fit-content;
+            max-width: 80%;
+        }
+        .chat-message.user {
+            background-color: #007bff;
+            color: white;
+            align-self: flex-start;
+        }
+        .chat-message.bot {
+            background-color: #e9ecef;
+            color: black;
+            align-self: flex-end;
+        }
+        .chat-footer {
+            padding: 15px;
+            background-color: #f8f9fa;
+            display: flex;
+            align-items: center;
+            border-top: 1px solid #dee2e6;
+        }
+        .chat-footer input {
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+        /* Black & White Mic Button */
+        .mic-button {
+            color: #000000; /* White icon */
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 50%;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
+        /* Hover effect */
+        .mic-button:hover {
+            background-color: #333333; /* Dark gray */
+        }
+    </style>
+</head>
+<body>
+    <div class="chat">
+        <div class="chat-header">Chatbot</div>
+        <div class="chat-body" id="chat-body"></div>
+        <div class="chat-footer">
+            <input type="text" class="form-control" id="message-input" placeholder="Type your message here...">
+            <button class="btn btn-primary" id="send-button">Send</button>
+            <button class="mic-button" id="mic-button">
+                <i class="fas fa-microphone"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- jQuery and Bootstrap JS -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.11.6/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/5.3.0/js/bootstrap.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#send-button').click(function() {
+                sendMessage();
+            });
+
+            $('#message-input').keypress(function(event) {
+                if (event.which == 13) {
+                    sendMessage();
+                }
+            });
+
+            $('#mic-button').click(function() {
+                startSpeechRecognition();
+            });
+
+            function sendMessage() {
+                var userMessage = $('#message-input').val().trim();
+                if (userMessage) {
+                    $('#chat-body').append('<div class="chat-message user">' + userMessage + '</div>');
+                    $('#message-input').val(" ");
+                    $('#chat-body').scrollTop($('#chat-body')[0].scrollHeight);
+
+                    $.ajax({
+                        url: 'http://127.0.0.1:5000/chat', 
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({"message": userMessage}),
+                        success: function(response) {
+                            if (response.response) {
+                                $('#chat-body').append('<div class="chat-message bot">' + response.response + '</div>');
+                                speak(response.response);
+                            } else {
+                                $('#chat-body').append('<div class="chat-message bot">Error: No response from the chatbot.</div>');
+                            }
+                            $('#chat-body').scrollTop($('#chat-body')[0].scrollHeight);
+                        },
+                        error: function(xhr, status, error) {
+                            console.error("Error: " + error);
+                            $('#chat-body').append('<div class="chat-message bot">Error: Unable to connect to the chatbot.</div>');
+                        }
+                    });
+                }
+            }
+
+            function startSpeechRecognition() {
+                var recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.lang = 'en-US';
+                recognition.start();
+
+                recognition.onresult = function(event) {
+                    var transcript = event.results[0][0].transcript;
+                    $('#message-input').val(transcript);
+                    sendMessage();
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                };
+            }
+
+            function speak(text) {
+                var speechSynthesis = window.speechSynthesis;
+                var utterance = new SpeechSynthesisUtterance(text);
+                speechSynthesis.speak(utterance);
+            }
+        });
+    </script>
+</body>
+</html>
